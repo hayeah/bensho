@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bensho"
+version = "0.1.0"
+description = "Analysis side of the bensho micro-benchmark harness: load its CSVs, summarise cells, flag calibration and drift, plot"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "0BSD"
+authors = [{ name = "Howard Yeh" }]
+dependencies = ["pandas", "matplotlib", "typer"]
+
+[project.urls]
+Repository = "https://github.com/hayeah/bensho"
+
+[project.scripts]
+bensho-report = "bensho.report:main"
+
+[dependency-groups]
+dev = ["pytest", "ruff", "pyright", "pandas-stubs", "jupytext", "papermill", "ipykernel"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["bensho*"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"*_notebook.py" = ["E402"]
+
+[tool.pyright]
+include = ["src"]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"
+
+[tool.pytest.ini_options]
+testpaths = ["src"]
+python_files = ["*_test.py"]
