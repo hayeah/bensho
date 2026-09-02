@@ -1,7 +1,7 @@
 """Makefile.py for the bensho analysis package.
 
-    pymake all                      # lint, typecheck, test
-    BENSHO_CSV=../toy.csv pymake notebook   # render the read-out notebook to output/
+    pymake all                                  # lint, typecheck, test
+    BENSHO_RESULTS=../out pymake notebook       # render the read-out notebook to output/
 """
 
 import os
@@ -49,15 +49,15 @@ def all():
 
 @task()
 def notebook():
-    """Convert and execute the read-out notebook against $BENSHO_CSV."""
-    csv = os.environ.get("BENSHO_CSV", "../toy.csv")
+    """Convert and execute the read-out notebook against $BENSHO_RESULTS."""
+    results = os.environ.get("BENSHO_RESULTS", "../out")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     sh(f"uv run jupytext --to notebook -o {NOTEBOOK_IPYNB} {NOTEBOOK_SRC}")
     sh(
         f"uv run papermill {NOTEBOOK_IPYNB} {NOTEBOOK_IPYNB} "
-        f"-p csv_path {csv} -p output_dir {NOTEBOOK_DUMP_DIR}"
+        f"-p results_path {results} -p output_dir {NOTEBOOK_DUMP_DIR}"
     )
-    sh(f"uv run bensho-report {csv} --dump {NOTEBOOK_DUMP_DIR}")
+    sh(f"uv run bensho-report {results} --dump {NOTEBOOK_DUMP_DIR}")
 
 
 task.default(all)

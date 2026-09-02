@@ -1,7 +1,7 @@
-"""bensho-report: print the read-out of one or more bensho CSVs, plot it.
+"""bensho-report: print the read-out of bensho CSV files or directories, plot it.
 
-cd py && uv run bensho-report ../toy.csv --plot toy.png
-uvx --from ./py bensho-report toy.csv
+cd py && uv run bensho-report ../out/toy --plot toy.png --color-by group
+uvx --from ./py bensho-report out/          # every suite under out/
 """
 
 from __future__ import annotations
@@ -19,25 +19,23 @@ app = typer.Typer(add_completion=False)
 
 @app.command()
 def report(
-    csv: Annotated[list[Path], typer.Argument(help="bensho CSV files, concatenated")],
+    paths: Annotated[
+        list[Path], typer.Argument(help="bensho CSV files or directories of them")
+    ],
     plot: Annotated[Path | None, typer.Option(help="save the figure here")] = None,
     dump: Annotated[
         Path | None, typer.Option(help="write every table as TSV here")
     ] = None,
+    color_by: Annotated[
+        str | None, typer.Option(help="colour the figure by this column")
+    ] = None,
 ) -> None:
-    """Census, per-cell statistics, anomalies and drift for bensho CSVs."""
+    """Census, per-cell statistics, anomalies, drift and carry-over at every
+    level for bensho results."""
     pd.set_option("display.width", 200)
     pd.set_option("display.max_columns", 30)
-    r = Results.load(csv)
-    sections = [
-        ("census", r.census()),
-        ("cells", r.cells()),
-        ("anomalies", r.anomalies()),
-        ("round drift (normalised to cell median)", r.round_drift()),
-        ("position drift (slot 0..1 -> normalised ns/op)", r.position_drift()),
-        ("carry-over by predecessor", r.carryover()),
-    ]
-    for name, table in sections:
+    r = Results.load(paths)
+    for name, table in r.tables().items():
         print(f"== {name}")
         print(table.to_string() if len(table) else "(none)")
         print()
@@ -45,7 +43,7 @@ def report(
         r.dump(dump)
         print(f"wrote {dump}/")
     if plot is not None:
-        fig = r.figure()
+        fig = r.figure(color_by=color_by)
         plot.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(plot, bbox_inches="tight", facecolor=fig.get_facecolor())
         print(f"wrote {plot}")
