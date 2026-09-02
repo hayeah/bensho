@@ -2,7 +2,7 @@
 title: "bensho: a small micro-benchmark harness that owns the boilerplate and leaves the data to the bench"
 date: 2026-09-02
 tags: [bensho, benchmark, csv, pandas, harness, rust, python]
-status: proposed; implemented in this repo alongside the spec
+status: implemented; the API, interleaving and CSV contract sections are superseded by specs/20260902_182536_bensho_suite_csv_sink_and_filter.md (suites, groups, one file per cell); the run loop, calibration and generic-versus-bespoke sections stand
 related:
   - ~/github.com/hayeah/yudu/bench/embedbench/src/main.rs    # the reference implementation lifted from
   - ~/github.com/hayeah/yudu/bench/embed_analysis.py           # the analysis shape copied (calibrated-M flagging, per-cell stats)
