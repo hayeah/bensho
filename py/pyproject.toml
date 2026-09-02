@@ -19,7 +19,16 @@ Repository = "https://github.com/hayeah/bensho"
 bensho-report = "bensho.report:main"
 
 [dependency-groups]
-dev = ["pytest", "ruff", "pyright", "pandas-stubs", "jupytext", "papermill", "ipykernel"]
+dev = [
+    "pytest",
+    "ruff",
+    "pyright",
+    "pandas-stubs",
+    "hayeah-pymake",
+    "jupytext",
+    "papermill",
+    "ipykernel",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

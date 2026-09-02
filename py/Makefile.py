@@ -1,9 +1,10 @@
 """Makefile.py for the bensho analysis package.
 
     pymake all                      # lint, typecheck, test
-    pymake notebook --csv ../toy.csv  # render the read-out notebook to output/
+    BENSHO_CSV=../toy.csv pymake notebook   # render the read-out notebook to output/
 """
 
+import os
 from pathlib import Path
 
 from pymake import sh, task
@@ -47,8 +48,9 @@ def all():
 
 
 @task()
-def notebook(csv: str = "../toy.csv"):
-    """Convert and execute the read-out notebook against one CSV."""
+def notebook():
+    """Convert and execute the read-out notebook against $BENSHO_CSV."""
+    csv = os.environ.get("BENSHO_CSV", "../toy.csv")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     sh(f"uv run jupytext --to notebook -o {NOTEBOOK_IPYNB} {NOTEBOOK_SRC}")
     sh(
