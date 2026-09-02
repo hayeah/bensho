@@ -21,13 +21,19 @@ pub struct Options {
     pub budget: Duration,
     /// The shuffle seed.
     pub seed: u64,
-    /// Write the CSV header.
-    pub header: bool,
-    /// CSV destination; stdout when absent.
-    pub out: Option<PathBuf>,
-    /// Substring filters on `subject/mode`; a cell must match one of them
-    /// when any are given.
+    /// The output directory; every suite is a subdirectory of it.
+    pub out_dir: PathBuf,
+    /// Substring filters on the suite name; a suite runs when it matches one
+    /// of them, or when there are none.
+    pub suite: Vec<String>,
+    /// Substring filters on `<suite>/<group>/<cell>`; a cell runs when it
+    /// matches one of them, or when there are none.
     pub only: Vec<String>,
+    /// Substring filters on `<suite>/<group>/<cell>`; a cell matching any of
+    /// them does not run. Applied after `only`.
+    pub skip: Vec<String>,
+    /// Print the cells that would run and run nothing.
+    pub list: bool,
     /// Arguments bensho did not recognise, for the bench.
     pub rest: Vec<String>,
 }
@@ -41,9 +47,11 @@ impl Default for Options {
             pilot_ops: 1_024,
             budget: Duration::from_secs(2),
             seed: 0x5eed,
-            header: true,
-            out: None,
+            out_dir: PathBuf::from("."),
+            suite: Vec::new(),
             only: Vec::new(),
+            skip: Vec::new(),
+            list: false,
             rest: Vec::new(),
         }
     }
@@ -56,9 +64,11 @@ pub const USAGE: &str = "bensho options:
   --pilot P         pilot batch, doubles as warm-up (1024)
   --budget-ms MS    per-cell per-round time target the batch is fitted to (2000)
   --seed S          shuffle seed, decimal or 0x hex (0x5eed)
-  --no-header       omit the CSV header (for concatenating runs)
-  --out FILE        write CSV to FILE instead of stdout
-  --only PATTERN    keep cells whose subject/mode contains PATTERN (repeatable)
+  --out DIR         output directory; one subdirectory per suite, one CSV per cell (.)
+  --suite SUBSTR    run suites whose name contains SUBSTR (repeatable)
+  --only SUBSTR     run cells whose suite/group/cell path contains SUBSTR (repeatable)
+  --skip SUBSTR     skip cells whose suite/group/cell path contains SUBSTR (repeatable)
+  --list            print the cells that would run, one per line, and run nothing
 anything else is left for the bench";
 
 impl Options {
@@ -82,9 +92,11 @@ impl Options {
                     o.budget = Duration::from_millis(number(&value("--budget-ms")?, "--budget-ms")?)
                 }
                 "--seed" => o.seed = number(&value("--seed")?, "--seed")?,
-                "--no-header" => o.header = false,
-                "--out" => o.out = Some(PathBuf::from(value("--out")?)),
+                "--out" => o.out_dir = PathBuf::from(value("--out")?),
+                "--suite" => o.suite.push(value("--suite")?),
                 "--only" => o.only.push(value("--only")?),
+                "--skip" => o.skip.push(value("--skip")?),
+                "--list" => o.list = true,
                 _ => o.rest.push(a),
             }
         }
@@ -111,13 +123,17 @@ impl Options {
         }
     }
 
-    /// Whether a cell named `subject/mode` passes the `--only` filters.
-    pub fn keeps(&self, subject: &str, mode: &str) -> bool {
-        if self.only.is_empty() {
-            return true;
-        }
-        let name = format!("{subject}/{mode}");
-        self.only.iter().any(|p| name.contains(p.as_str()))
+    /// Whether a suite passes the `--suite` filters.
+    pub fn enters(&self, suite: &str) -> bool {
+        self.suite.is_empty() || self.suite.iter().any(|p| suite.contains(p.as_str()))
+    }
+
+    /// Whether a cell at `path` (`<group>/<cell>` or `<cell>`) in `suite`
+    /// passes the `--only` and `--skip` filters.
+    pub fn keeps(&self, suite: &str, path: &str) -> bool {
+        let full = format!("{suite}/{path}");
+        let wanted = self.only.is_empty() || self.only.iter().any(|p| full.contains(p.as_str()));
+        wanted && !self.skip.iter().any(|p| full.contains(p.as_str()))
     }
 }
 

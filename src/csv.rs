@@ -1,64 +1,60 @@
-//! The CSV writer: bensho's columns, then the row's, RFC-4180 quoting only
-//! where a value needs it.
+//! One CSV file per cell: header on create, open-append-close per row,
+//! RFC-4180 quoting only where a value needs it.
 
+use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
+use std::path::PathBuf;
 
 use crate::{Record, Row, COLUMNS};
 
-pub struct CSVWriter<'w> {
-    out: &'w mut dyn Write,
-    user_columns: &'static [&'static str],
+/// A cell's file. Holds the path, never a handle.
+pub(crate) struct CellFile {
+    path: PathBuf,
+    user_columns: usize,
 }
 
-impl<'w> CSVWriter<'w> {
-    /// Check the user's columns against bensho's and write the header if
-    /// asked. A user column named like a bensho column is a bench bug.
-    pub fn new(
-        out: &'w mut dyn Write,
-        user_columns: &'static [&'static str],
-        header: bool,
-    ) -> io::Result<CSVWriter<'w>> {
-        for c in user_columns {
-            if COLUMNS.contains(c) {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    format!("row column {c:?} collides with a bensho column"),
-                ));
-            }
+impl CellFile {
+    /// Create the parent directories and the file, truncating, and write the
+    /// header: bensho's columns, then `data.<field>` per user column.
+    pub(crate) fn create(path: PathBuf, user_columns: &[&str]) -> io::Result<CellFile> {
+        if let Some(dir) = path.parent() {
+            fs::create_dir_all(dir)?;
         }
-        let mut w = CSVWriter { out, user_columns };
-        if header {
-            let mut fields: Vec<String> = COLUMNS.iter().map(|c| c.to_string()).collect();
-            fields.extend(user_columns.iter().map(|c| c.to_string()));
-            w.line(&fields)?;
-        }
-        Ok(w)
+        let mut fields: Vec<String> = COLUMNS.iter().map(|c| c.to_string()).collect();
+        fields.extend(user_columns.iter().map(|c| format!("data.{c}")));
+        let mut file = fs::File::create(&path)?;
+        writeln!(file, "{}", line(&fields))?;
+        Ok(CellFile {
+            path,
+            user_columns: user_columns.len(),
+        })
     }
 
-    pub fn record<R: Row>(&mut self, rec: &Record, row: &R) -> io::Result<()> {
+    /// Append one record and its row, opening and closing the file.
+    pub(crate) fn append<R: Row>(&self, rec: &Record, row: &R) -> io::Result<()> {
         let values = row.values();
-        if values.len() != self.user_columns.len() {
+        if values.len() != self.user_columns {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 format!(
                     "row for {}/{} has {} values for {} columns",
-                    rec.subject,
-                    rec.mode,
+                    rec.suite,
+                    rec.path(),
                     values.len(),
-                    self.user_columns.len()
+                    self.user_columns
                 ),
             ));
         }
         let mut fields = rec.values();
         fields.extend(values);
-        self.line(&fields)?;
-        self.out.flush()
+        let mut file = OpenOptions::new().append(true).open(&self.path)?;
+        writeln!(file, "{}", line(&fields))
     }
+}
 
-    fn line(&mut self, fields: &[String]) -> io::Result<()> {
-        let line: Vec<String> = fields.iter().map(|f| quote(f)).collect();
-        writeln!(self.out, "{}", line.join(","))
-    }
+fn line(fields: &[String]) -> String {
+    let quoted: Vec<String> = fields.iter().map(|f| quote(f)).collect();
+    quoted.join(",")
 }
 
 /// RFC-4180 quoting, applied only when the value needs it.
