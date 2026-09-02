@@ -1,7 +1,7 @@
 """Makefile.py for the bensho analysis package.
 
-    pymake all                                  # lint, typecheck, test
-    BENSHO_RESULTS=../out pymake notebook       # render the read-out notebook to output/
+pymake all                                  # lint, typecheck, test
+BENSHO_RESULTS=../out pymake notebook       # read-out notebook into output/
 """
 
 import os
