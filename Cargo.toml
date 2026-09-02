@@ -1,0 +1,20 @@
+[package]
+name = "bensho"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+description = "A small micro-benchmark harness: warm-up, budget calibration, seeded interleaving and CSV output, with the data columns left to the bench"
+license = "0BSD"
+repository = "https://github.com/hayeah/bensho"
+readme = "README.md"
+keywords = ["benchmark", "microbenchmark", "csv", "harness"]
+categories = ["development-tools::profiling"]
+exclude = ["py/", "specs/", "worklogs/", ".claude/"]
+
+[dependencies]
+
+[profile.release]
+debug = 1
+
+[[example]]
+name = "toy"
